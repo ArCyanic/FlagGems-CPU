@@ -10,7 +10,7 @@ __pycache__/
 .vscode/
 
 # Distribution files
-build/
+build*/
 *.egg-info/
 .eggs/
 dist/
@@ -28,6 +28,9 @@ tests/*.json
 *.air
 *.ipa
 *.apk
+
+*.log
+*.json
 
 # Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
 # should NOT be excluded as they contain compiler settings and other important
