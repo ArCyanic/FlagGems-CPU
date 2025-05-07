@@ -13,22 +13,27 @@ try:
 except ImportError:
     pass
 
-from ..runtime import torch_device_fn
+from ..runtime import torch_device_fn, get_torch_device_ctx
 from ..utils import libentry
 from ..utils import triton_lang_extension as tle
 
-_MIN_FLOAT32_VAL: tl.constexpr = torch.finfo(torch.float32).min
-_MAX_FLOAT32_VAL: tl.constexpr = torch.finfo(torch.float32).max
-_MIN_FLOAT16_VAL: tl.constexpr = torch.finfo(torch.float16).min
-_MAX_FLOAT16_VAL: tl.constexpr = torch.finfo(torch.float16).max
-_MIN_BFLOAT16_VAL: tl.constexpr = torch.finfo(torch.bfloat16).min
-_MAX_BFLOAT16_VAL: tl.constexpr = torch.finfo(torch.bfloat16).max
-_MIN_INT16_VAL: tl.constexpr = torch.iinfo(torch.int16).min
-_MAX_INT16_VAL: tl.constexpr = torch.iinfo(torch.int16).max
-_MIN_INT32_VAL: tl.constexpr = torch.iinfo(torch.int32).min
-_MAX_INT32_VAL: tl.constexpr = torch.iinfo(torch.int32).max
-_MIN_INT64_VAL: tl.constexpr = torch.iinfo(torch.int64).min
-_MAX_INT64_VAL: tl.constexpr = torch.iinfo(torch.int64).max
+# NOTE: Error encountering: 
+# `NameError("Cannot access global variable _MAX_FLOAT32_VAL from within @jit'ed function.
+# Triton kernels can only access global variables that are instanstiated as constexpr (`x = triton.language.constexpr(42)`).
+# Note that this is different from annotating a variable as constexpr (`x: triton.language.constexpr = 42`), which is not supported.
+# Alternatively, set the envvar TRITON_ALLOW_NON_CONSTEXPR_GLOBALS=1, but we do not promise to support this forever.")
+_MIN_FLOAT32_VAL = tl.constexpr(torch.finfo(torch.float32).min)
+_MAX_FLOAT32_VAL = tl.constexpr(torch.finfo(torch.float32).max)
+_MIN_FLOAT16_VAL = tl.constexpr(torch.finfo(torch.float16).min)
+_MAX_FLOAT16_VAL = tl.constexpr(torch.finfo(torch.float16).max)
+_MIN_BFLOAT16_VAL = tl.constexpr(torch.finfo(torch.bfloat16).min)
+_MAX_BFLOAT16_VAL = tl.constexpr(torch.finfo(torch.bfloat16).max)
+_MIN_INT16_VAL = tl.constexpr(torch.iinfo(torch.int16).min)
+_MAX_INT16_VAL = tl.constexpr(torch.iinfo(torch.int16).max)
+_MIN_INT32_VAL = tl.constexpr(torch.iinfo(torch.int32).min)
+_MAX_INT32_VAL = tl.constexpr(torch.iinfo(torch.int32).max)
+_MIN_INT64_VAL = tl.constexpr(torch.iinfo(torch.int64).min)
+_MAX_INT64_VAL = tl.constexpr(torch.iinfo(torch.int64).max)
 
 
 @triton.jit
@@ -310,7 +315,7 @@ def topk(x, k, dim=-1, largest=True, sorted=True):
     stage2_out = torch.empty(out_shape, device=x.device, dtype=x.dtype)
     stage2_out_idx = torch.empty(out_shape, device=x.device, dtype=torch.int64)
 
-    with torch_device_fn.device(x.device):
+    with get_torch_device_ctx(x.device):
         topk_stage1_kernel[
             batch_size,
             chunk_num,
@@ -326,7 +331,7 @@ def topk(x, k, dim=-1, largest=True, sorted=True):
     stage2_elem_cnt = chunk_num * k
     BLOCK_SIZE = triton.next_power_of_2(stage2_elem_cnt)
 
-    with torch_device_fn.device(x.device):
+    with get_torch_device_ctx(x.device):
         topk_stage2_kernel[batch_size,](
             stage2_out,
             stage2_out_idx,

@@ -7,24 +7,25 @@ import triton.language as tl
 from flag_gems.utils.random_utils import philox_backend_seed_offset
 
 from .. import runtime
-from ..runtime import device, torch_device_fn
+from ..runtime import device, torch_device_fn, get_torch_device_ctx
 from ..utils import libentry
 from .topk import argsort
+import flag_gems
 
 device_ = device
 
-_MIN_INT8_VAL: tl.constexpr = torch.iinfo(torch.int8).min
-_MAX_INT8_VAL: tl.constexpr = torch.iinfo(torch.int8).max
-_MIN_INT16_VAL: tl.constexpr = torch.iinfo(torch.int16).min
-_MAX_INT16_VAL: tl.constexpr = torch.iinfo(torch.int16).max
-_MIN_INT32_VAL: tl.constexpr = torch.iinfo(torch.int32).min
-_MAX_INT32_VAL: tl.constexpr = torch.iinfo(torch.int32).max
-_MIN_INT64_VAL: tl.constexpr = torch.iinfo(torch.int64).min
-_MAX_INT64_VAL: tl.constexpr = torch.iinfo(torch.int64).max
-_MAX_UINT32_VAL: tl.constexpr = (1 << 32) - 1
-_MIN_UINT32_VAL: tl.constexpr = 0
-_MIN_INT24_VAL: tl.constexpr = -(2**23)
-_MAX_INT24_VAL: tl.constexpr = 2**23 - 1
+_MIN_INT8_VAL = tl.constexpr(torch.iinfo(torch.int8).min)
+_MAX_INT8_VAL = tl.constexpr(torch.iinfo(torch.int8).max)
+_MIN_INT16_VAL = tl.constexpr(torch.iinfo(torch.int16).min)
+_MAX_INT16_VAL = tl.constexpr(torch.iinfo(torch.int16).max)
+_MIN_INT32_VAL = tl.constexpr(torch.iinfo(torch.int32).min)
+_MAX_INT32_VAL = tl.constexpr(torch.iinfo(torch.int32).max)
+_MIN_INT64_VAL = tl.constexpr(torch.iinfo(torch.int64).min)
+_MAX_INT64_VAL = tl.constexpr(torch.iinfo(torch.int64).max)
+_MAX_UINT32_VAL = tl.constexpr((1 << 32) - 1)
+_MIN_UINT32_VAL = tl.constexpr(0)
+_MIN_INT24_VAL = tl.constexpr(-(2**23))
+_MAX_INT24_VAL = tl.constexpr(2**23 - 1)
 
 
 @triton.jit
@@ -327,7 +328,7 @@ def sort_by_key(key, value, valid_bits):
 
         # step1
         d_lookback.zero_()
-        with torch_device_fn.device(key.device):
+        with get_torch_device_ctx(key.device):
             digit_hist_kernel[grid_hist](
                 digit_hist_slice,
                 key,
@@ -358,7 +359,7 @@ def sort_by_key(key, value, valid_bits):
                 )
                 tiles_per_portion = triton.cdiv(portion_items, BLOCK_SIZE)
                 grid_scatter = (tiles_per_portion, grid_hist[1])
-                with torch_device_fn.device(key.device):
+                with get_torch_device_ctx(key.device):
                     radix_sortbykey_scatter_kernel[grid_scatter](
                         k_out,
                         v_out,
@@ -384,8 +385,12 @@ def sort_by_key(key, value, valid_bits):
         # last step, shuffle inner-block data
         BLOCK_SIZE_SHUFFLE = 512
         grid_shuffle = (triton.cdiv(n_elements, BLOCK_SIZE_SHUFFLE),)
-        philox_seed, philox_offset = philox_backend_seed_offset(n_elements)
-        with torch_device_fn.device(key.device):
+        if flag_gems.device == 'cpu':
+            # OPTIM:
+            philox_seed, philox_offset = torch.seed(), 0
+        else:
+            philox_seed, philox_offset = philox_backend_seed_offset(n_elements)
+        with get_torch_device_ctx(key.device):
             duplicate_keys_shuffle_kernel[grid_shuffle](
                 v_out,
                 n_elements,
@@ -401,7 +406,7 @@ def sort_by_key(key, value, valid_bits):
         grid = (1,)
         k_out = torch.empty_like(key)
         v_out = torch.empty_like(value)
-        with torch_device_fn.device(key.device):
+        with get_torch_device_ctx(key.device):
             bitonic_sortbykey_kernel[grid](
                 k_out, v_out, key, value, n_elements, BLOCK_SIZE, False
             )
