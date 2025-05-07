@@ -8,16 +8,17 @@ from .accuracy_utils import gems_assert_close, to_reference
 
 device = flag_gems.device
 
+from .conftest import QUICK_MODE
 
 @pytest.mark.skipif(flag_gems.vendor_name == "hygon", reason="RuntimeError")
 @pytest.mark.skipif(flag_gems.device == "musa", reason="RuntimeError")
 @pytest.mark.skipif(flag_gems.vendor_name == "kunlunxin", reason="RESULT TODOFIX")
 @pytest.mark.scaled_dot_product_attention
-@pytest.mark.parametrize("batch", [8, 16])
-@pytest.mark.parametrize("num_head", [1, 8])
-@pytest.mark.parametrize("q_seq_len", [17, 64, 128])
-@pytest.mark.parametrize("kv_seq_len", [7, 87, 128, 577, 2048])
-@pytest.mark.parametrize("head_size", [64, 128])
+@pytest.mark.parametrize("batch",  [8] if QUICK_MODE else [8, 16])
+@pytest.mark.parametrize("num_head", [1] if QUICK_MODE else [1, 8])
+@pytest.mark.parametrize("q_seq_len", [17] if QUICK_MODE else [17, 64, 128])
+@pytest.mark.parametrize("kv_seq_len", [7] if QUICK_MODE else [7, 87, 128, 577, 2048])
+@pytest.mark.parametrize("head_size", [64] if QUICK_MODE else [64, 128])
 @pytest.mark.parametrize("add_bias", [True, False])
 @pytest.mark.parametrize("is_causal", [True, False])
 @pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16])
