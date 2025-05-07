@@ -10,7 +10,7 @@ from flag_gems.utils.random_utils import (
 )
 
 from .. import runtime
-from ..runtime import torch_device_fn
+from ..runtime import torch_device_fn, get_torch_device_ctx
 
 
 @triton.heuristics(runtime.get_heuristic_config("exponential_"))
@@ -94,10 +94,14 @@ def exponential_(x, lambd: float = 1.0, *, gen=None):
     # (TODO) Using Triton autotuner makes kernel parameters opaque to the caller,
     # hence we cannot obtain the per thread offset as in Pytorch.
     increment = triton.cdiv(N, UNROLL)
-    philox_seed, philox_offset = philox_backend_seed_offset(increment)
+    if device.type == 'cpu':
+        # OPTIM:
+        philox_seed, philox_offset = torch.seed(), 0
+    else:
+        philox_seed, philox_offset = philox_backend_seed_offset(increment)
     eps = torch.finfo(dtype).eps
     x_ = x if inplace else torch.empty(x.size(), dtype=dtype, device=device)
-    with torch_device_fn.device(device):
+    with get_torch_device_ctx(device):
         fused_exponential_kernel[grid_fn](
             x_, N, is_double, lambd, eps, philox_seed, philox_offset
         )

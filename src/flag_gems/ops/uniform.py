@@ -1,5 +1,6 @@
 import logging
 
+import torch
 import triton
 import triton.language as tl
 
@@ -10,7 +11,7 @@ from flag_gems.utils.random_utils import (
 from flag_gems.utils.shape_utils import volume
 
 from .. import runtime
-from ..runtime import torch_device_fn
+from ..runtime import torch_device_fn, get_torch_device_ctx
 
 
 @triton.heuristics(runtime.get_heuristic_config("uniform"))
@@ -55,7 +56,11 @@ def uniform_(self, from_=0.0, to=1.0, *, generator=None):
     grid_fn = lambda meta: (triton.cdiv(N, meta["BLOCK"] * UNROLL),)
 
     increment = triton.cdiv(N, UNROLL)
-    philox_seed, philox_offset = philox_backend_seed_offset(increment)
-    with torch_device_fn.device(self.device):
+    if self.device.type == 'cpu':
+        # OPTIM:
+        philox_seed, philox_offset = torch.seed(), 0
+    else:
+        philox_seed, philox_offset = philox_backend_seed_offset(increment)
+    with get_torch_device_ctx(self.device):
         uniform_kernel[grid_fn](self, N, philox_seed, philox_offset, from_, to)
     return self
