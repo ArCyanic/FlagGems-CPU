@@ -7,7 +7,7 @@ import triton
 import triton.language as tl
 
 from .. import runtime
-from ..runtime import torch_device_fn
+from ..runtime import torch_device_fn, get_torch_device_ctx
 from ..utils import libentry
 from ..utils import triton_lang_extension as tle
 from ..utils.limits import get_dtype_min
@@ -109,7 +109,7 @@ def max(inp):
     mid = torch.empty((mid_size,), dtype=dtype, device=inp.device)
     out = torch.empty([], dtype=dtype, device=inp.device)
 
-    with torch_device_fn.device(inp.device):
+    with get_torch_device_ctx(inp.device):
         max_kernel_1[(mid_size, 1, 1)](inp, mid, M, block_size)
         max_kernel_2[(1, 1, 1)](mid, out, mid_size, block_mid)
     return out
@@ -139,7 +139,7 @@ def max_dim(inp, dim=None, keepdim=False):
         triton.cdiv(M, meta["BLOCK_M"]),
         K,
     )
-    with torch_device_fn.device(inp.device):
+    with get_torch_device_ctx(inp.device):
         max_kernel[grid](inp, out_value, out_index, M, N, K)
     Max_out = namedtuple("max", ["values", "indices"])
     out = Max_out(values=out_value, indices=out_index)

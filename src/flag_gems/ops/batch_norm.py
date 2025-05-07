@@ -6,7 +6,7 @@ import triton.language as tl
 from torch import Tensor
 
 from .. import runtime
-from ..runtime import torch_device_fn
+from ..runtime import torch_device_fn, get_torch_device_ctx
 from ..utils import libentry, tl_extra_shim
 from ..utils.type_utils import get_accumulator_dtype
 
@@ -355,7 +355,7 @@ class BatchNorm(torch.autograd.Function):
         running_var = input if running_var is None else running_var
 
         # Launches 1D grid where each program operates over one feature.
-        with torch_device_fn.device(input.device):
+        with get_torch_device_ctx(input.device):
             batch_norm_forward_kernel[(feat_dim,)](
                 input_3d,
                 weight,
@@ -400,7 +400,7 @@ class BatchNorm(torch.autograd.Function):
             weight_grad = bias_grad = None
 
         # Launches 1D grid where each program operates over one feature.
-        with torch_device_fn.device(input.device):
+        with get_torch_device_ctx(input.device):
             batch_norm_backward_kernel[(feat_dim,)](
                 output_grad_3d,
                 input_3d,

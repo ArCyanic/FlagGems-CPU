@@ -5,7 +5,7 @@ import triton
 import triton.language as tl
 
 from .. import runtime
-from ..runtime import torch_device_fn
+from ..runtime import torch_device_fn, get_torch_device_ctx
 from ..utils import libentry
 from ..utils import triton_lang_extension as tle
 
@@ -295,7 +295,7 @@ class Softmax(torch.autograd.Function):
         out = torch.empty_like(inp, dtype=dtype)
         K = inp.numel() // M // N  # post_dim
 
-        with torch_device_fn.device(inp.device):
+        with get_torch_device_ctx(inp.device):
             if K > 1:
                 grid = lambda meta: (M, triton.cdiv(K, meta["TILE_K"]), 1)
                 softmax_kernel_non_inner[grid](
@@ -334,7 +334,7 @@ class Softmax(torch.autograd.Function):
         in_grad = torch.empty_like(out)
         K = out.numel() // M // N
 
-        with torch_device_fn.device(in_grad.device):
+        with get_torch_device_ctx(in_grad.device):
             if K > 1:
                 grid = lambda meta: (M, triton.cdiv(K, meta["TILE_K"]), 1)
                 softmax_backward_kernel_non_inner[grid](

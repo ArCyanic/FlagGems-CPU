@@ -4,7 +4,7 @@ import torch
 import triton
 import triton.language as tl
 
-from ..runtime import torch_device_fn
+from ..runtime import torch_device_fn, get_torch_device_ctx
 from ..utils import libentry, tl_extra_shim
 from ..utils import triton_lang_extension as tle
 
@@ -186,7 +186,7 @@ class GroupNorm(torch.autograd.Function):
         rstd = torch.empty((N, num_groups), dtype=x.dtype, device=x.device)
         grid = (N * num_groups,)
 
-        with torch_device_fn.device(x.device):
+        with get_torch_device_ctx(x.device):
             group_norm_kernel[grid](
                 x,
                 y,
@@ -223,7 +223,7 @@ class GroupNorm(torch.autograd.Function):
         HW = ctx.HW
         x_grad = torch.empty_like(x)
         grid = (N * num_groups,)
-        with torch_device_fn.device(x.device):
+        with get_torch_device_ctx(x.device):
             group_norm_backward_kernel[grid](
                 y_grad,
                 x,
@@ -243,7 +243,7 @@ class GroupNorm(torch.autograd.Function):
 
         weight_grad = None if weight is None else torch.empty_like(weight)
         bias_grad = None if bias is None else torch.empty_like(bias)
-        with torch_device_fn.device(x.device):
+        with get_torch_device_ctx(x.device):
             weight_bias_backward_kernel[(C, 1, 1)](
                 y_grad,
                 x,

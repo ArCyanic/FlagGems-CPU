@@ -5,7 +5,7 @@ import torch
 import triton
 import triton.language as tl
 
-from ..runtime import torch_device_fn
+from ..runtime import torch_device_fn, get_torch_device_ctx
 from ..utils import libentry
 from .topk import _get_finfo_val, _get_iinfo_val, argsort
 
@@ -64,7 +64,7 @@ def sort(inp, dim=-1, descending=False):
     out = torch.empty_like(inp)
     out_index = torch.empty_like(inp, dtype=torch.int64)
 
-    with torch_device_fn.device(inp.device):
+    with get_torch_device_ctx(inp.device):
         sort_kernel[batch_size,](
             inp,
             out,

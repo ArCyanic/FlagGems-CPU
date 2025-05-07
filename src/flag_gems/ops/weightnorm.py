@@ -6,7 +6,7 @@ import triton
 import triton.language as tl
 
 from .. import runtime
-from ..runtime import torch_device_fn
+from ..runtime import torch_device_fn, get_torch_device_ctx
 from ..utils import libentry
 from ..utils import triton_lang_extension as tle
 
@@ -211,7 +211,7 @@ class WeightNormInterface(torch.autograd.Function):
             M = v.shape[0]
             N = math.prod(v.shape[1:])
             grid = lambda META: (triton.cdiv(M, META["BLOCK_ROW_SIZE"]),)
-            with torch_device_fn.device(v.device):
+            with get_torch_device_ctx(v.device):
                 weight_norm_kernel_first[grid](
                     output, norm, v, g, M, N, eps=torch.finfo(torch.float32).tiny
                 )
@@ -219,7 +219,7 @@ class WeightNormInterface(torch.autograd.Function):
             M = math.prod(v.shape[:-1])
             N = v.shape[dim]
             grid = lambda META: (triton.cdiv(N, META["BLOCK_COL_SIZE"]),)
-            with torch_device_fn.device(v.device):
+            with get_torch_device_ctx(v.device):
                 weight_norm_kernel_last[grid](
                     output, norm, v, g, M, N, eps=torch.finfo(torch.float32).tiny
                 )
@@ -241,7 +241,7 @@ class WeightNormInterface(torch.autograd.Function):
             M = v.shape[0]
             N = math.prod(v.shape[1:])
             grid = lambda META: (triton.cdiv(M, META["BLOCK_ROW_SIZE"]),)
-            with torch_device_fn.device(v.device):
+            with get_torch_device_ctx(v.device):
                 weight_norm_bwd_kernel_first[grid](
                     v_grad,
                     g_grad,
@@ -257,7 +257,7 @@ class WeightNormInterface(torch.autograd.Function):
             M = math.prod(v.shape[:dim])
             N = v.shape[dim]
             grid = lambda META: (triton.cdiv(N, META["BLOCK_COL_SIZE"]),)
-            with torch_device_fn.device(v.device):
+            with get_torch_device_ctx(v.device):
                 weight_norm_bwd_kernel_last[grid](
                     v_grad,
                     g_grad,
@@ -408,7 +408,7 @@ class WeightNormExceptDim(torch.autograd.Function):
 
         grid = lambda META: (triton.cdiv(v_shape[1], META["BLOCK_ROW_SIZE"]),)
 
-        with torch_device_fn.device(v.device):
+        with get_torch_device_ctx(v.device):
             weight_norm_except_dim_kernel[grid](
                 output,
                 norm,
@@ -432,7 +432,7 @@ class WeightNormExceptDim(torch.autograd.Function):
         g_grad = torch.empty_like(g)
 
         grid = lambda META: (triton.cdiv(ctx.V_SHAPE[1], META["BLOCK_ROW_SIZE"]),)
-        with torch_device_fn.device(v.device):
+        with get_torch_device_ctx(v.device):
             weight_norm_except_dim_bwd_kernel[grid](
                 v_grad,
                 g_grad,

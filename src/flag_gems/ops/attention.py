@@ -4,7 +4,7 @@ import torch
 import triton
 import triton.language as tl
 
-from flag_gems.runtime import torch_device_fn
+from flag_gems.runtime import torch_device_fn, get_torch_device_ctx
 
 from .. import runtime
 
@@ -360,7 +360,7 @@ def scaled_dot_product_attention(
         stride_attn_mask_q_seqlen = 1
         stride_attn_mask_kv_seqlen = 1
 
-    with torch_device_fn.device(query.device):
+    with get_torch_device_ctx(query.device):
         _attn_fwd[grid](
             query,
             key,

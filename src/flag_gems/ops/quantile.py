@@ -5,7 +5,7 @@ import triton
 import triton.language as tl
 from torch import Tensor
 
-from ..runtime import torch_device_fn
+from ..runtime import get_torch_device_ctx, torch_device_fn
 from ..utils import dim_compress, libentry, tl_extra_shim
 from ..utils import triton_lang_extension as tle
 
@@ -126,7 +126,7 @@ def quantile(
         triton.cdiv(N, meta["BLOCK_N"]),
     )
 
-    with torch_device_fn.device(inp.device):
+    with get_torch_device_ctx(inp.device):
         quantile_kernel[grid](inp, q, output, N, M, Q, interpolation=interpolation)
 
     output = output.permute(
