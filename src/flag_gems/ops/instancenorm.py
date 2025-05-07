@@ -7,7 +7,7 @@ import triton
 import triton.language as tl
 
 from .. import runtime
-from ..runtime import torch_device_fn
+from ..runtime import torch_device_fn, get_torch_device_ctx
 from ..utils import libentry
 from ..utils.type_utils import get_accumulator_dtype
 
@@ -486,7 +486,7 @@ class InstanceNorm(torch.autograd.Function):
         mean = torch.empty(size=(B, C), dtype=acc_type, device=x.device)
         rstd = torch.empty(size=(B, C), dtype=acc_type, device=x.device)
 
-        with torch_device_fn.device(x.device):
+        with get_torch_device_ctx(x.device):
             if use_input_stats:
                 if N <= 128:
                     TILE_N = triton.next_power_of_2(N)
@@ -593,7 +593,7 @@ class InstanceNorm(torch.autograd.Function):
         C = ctx.C
         B = M // C
 
-        with torch_device_fn.device(x.device):
+        with get_torch_device_ctx(x.device):
             in_grad = torch.empty_like(x)
             grid = lambda meta: (triton.cdiv(M, meta["BLOCK_ROW_SIZE"]), 1, 1)
             instance_norm_backward_kernel[grid](

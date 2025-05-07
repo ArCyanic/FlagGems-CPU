@@ -5,13 +5,14 @@ import triton
 import triton.language as tl
 
 from .. import runtime
-from ..runtime import torch_device_fn
+from ..runtime import get_torch_device_ctx, torch_device_fn
 from ..utils import libentry, libtuner
 from ..utils import triton_lang_extension as tle
 
 
 @libentry()
-@libtuner(
+# @libtuner( TODO: WHY?
+@triton.autotune(
     configs=runtime.get_tuned_config("mm"),
     key=["M", "N", "K"],
 )
@@ -125,7 +126,8 @@ def mm(a, b):
         triton.cdiv(M, META["BLOCK_M"]) * triton.cdiv(N, META["BLOCK_N"]),
         META["SPLIT_K"],
     )
-    with torch_device_fn.device(a.device):
+
+    with get_torch_device_ctx(a.device):
         mm_kernel[grid](
             a,
             b,

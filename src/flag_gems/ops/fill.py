@@ -4,7 +4,7 @@ import torch
 import triton
 import triton.language as tl
 
-from ..runtime import torch_device_fn
+from ..runtime import torch_device_fn, get_torch_device_ctx
 from ..utils import libentry
 from ..utils import triton_lang_extension as tle
 
@@ -49,7 +49,7 @@ def fill_tensor(input, value):
     BLOCK_SIZE = 512
     grid = triton.cdiv(N, BLOCK_SIZE)
 
-    with torch_device_fn.device(input.device):
+    with get_torch_device_ctx(input.device):
         fill_tensor_kernel[grid,](out, N, value, BLOCK_SIZE)
     return out
 
@@ -61,7 +61,7 @@ def fill_scalar(input, value):
     BLOCK_SIZE = 512
     grid = triton.cdiv(N, BLOCK_SIZE)
 
-    with torch_device_fn.device(input.device):
+    with get_torch_device_ctx(input.device):
         fill_scalar_kernel[grid,](out, N, value, BLOCK_SIZE)
     return out
 
@@ -76,7 +76,7 @@ def fill_tensor_(self, value):
     BLOCK_SIZE = 512
     grid = triton.cdiv(N, BLOCK_SIZE)
 
-    with torch_device_fn.device(self.device):
+    with get_torch_device_ctx(self.device):
         fill_tensor_kernel[grid,](self, N, value, BLOCK_SIZE)
     return self
 
@@ -87,6 +87,6 @@ def fill_scalar_(self, value):
     BLOCK_SIZE = 512
     grid = triton.cdiv(N, BLOCK_SIZE)
 
-    with torch_device_fn.device(self.device):
+    with get_torch_device_ctx(self.device):
         fill_scalar_kernel[grid,](self, N, value, BLOCK_SIZE)
     return self

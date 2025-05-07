@@ -10,7 +10,7 @@ from flag_gems.utils.random_utils import (
 )
 
 from .. import runtime
-from ..runtime import torch_device_fn
+from ..runtime import torch_device_fn, get_torch_device_ctx
 
 
 @triton.heuristics(runtime.get_heuristic_config("dropout"))
@@ -132,7 +132,7 @@ class NativeDropout(torch.autograd.Function):
         # (TODO) Using Triton autotuner makes kernel parameters opaque to the caller,
         # hence we cannot obtain the per thread offset as in Pytorch.
         increment = triton.cdiv(N, UNROLL)
-        with torch_device_fn.device(device):
+        with get_torch_device_ctx(device):
             philox_seed, philox_offset = philox_backend_seed_offset(increment)
             dropout_forward_kernel[grid_fn](x, out, N, p, philox_seed, philox_offset)
         ctx.p = p
@@ -148,7 +148,7 @@ class NativeDropout(torch.autograd.Function):
         grad_inputs = torch.empty_like(grad_outputs)
         N = grad_outputs.numel()
         grid_fn = lambda meta: (triton.cdiv(N, meta["BLOCK"] * UNROLL),)
-        with torch_device_fn.device(device):
+        with get_torch_device_ctx(device):
             dropout_backward_kernel[grid_fn](
                 grad_outputs, grad_inputs, N, ctx.p, ctx.philox_seed, ctx.philox_offset
             )

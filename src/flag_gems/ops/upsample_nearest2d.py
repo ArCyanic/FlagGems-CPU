@@ -6,7 +6,7 @@ import triton
 import triton.language as tl
 
 from .. import runtime
-from ..runtime import device, torch_device_fn
+from ..runtime import device, torch_device_fn, get_torch_device_ctx
 from ..utils import triton_lang_extension as tle
 
 device = device.name
@@ -77,7 +77,7 @@ def upsample_nearest2d(
     output = torch.empty((N, C, OH, OW), device=input.device, dtype=input.dtype)
     total_threads = N * C * OH * OW
     grid = lambda META: (triton.cdiv(total_threads, META["BLOCK_SIZE"]),)
-    with torch_device_fn.device(input.device):
+    with get_torch_device_ctx(input.device):
         upsample_nearest2d_kernel[grid](
             output, input, N, C, OH, OW, IH, IW, reciprocal_scale_h, reciprocal_scale_w
         )
